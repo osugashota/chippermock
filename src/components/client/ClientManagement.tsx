@@ -802,15 +802,17 @@ export const ClientManagement: React.FC = () => {
       'クライアント名',
       'ステータス',
       'プラン',
+      '追加ポイント数',
       'サイト使用率',
-      'ポイント使用率',
-      '契約期間',
+      'ポイント使用率（累積）',
+      '契約開始日',
+      '契約終了日',
+      '分析機能（通常）',
+      'ヒートマップ機能',
+      '最終ログイン',
       '登録ユーザー名',
       'メールアドレス',
-      'ロール',
-      '最終ログイン日時',
-      '作成日',
-      '最終更新日'
+      'ロール'
     ];
 
     const rows: string[][] = [];
@@ -821,20 +823,55 @@ export const ClientManagement: React.FC = () => {
       if (!primaryCompany) return;
       
       const contractStatus = getContractStatus(primaryCompany);
-      const siteUsage = getUsagePercentage(primaryCompany.settings.usage.sites, primaryCompany.settings.limits.sites);
-      const pointUsage = getUsagePercentage(primaryCompany.settings.usage.points, primaryCompany.settings.limits.points);
       
       // クライアントレベルでの集計値を計算
       const totalSites = client.companies.reduce((sum, company) => sum + company.settings.usage.sites, 0);
       const totalSiteLimit = client.companies.reduce((sum, company) => sum + company.settings.limits.sites, 0);
-      const totalPoints = client.companies.reduce((sum, company) => sum + company.settings.usage.points, 0);
-      const totalPointLimit = client.companies.reduce((sum, company) => sum + company.settings.limits.points, 0);
+      
+      // 累積ポイント使用率の計算
+      const calculateCumulativePointsCSV = (company: Company) => {
+        if (!company.contractStartDate) return { cumulative: 0, total: 0 };
+        
+        const startDate = new Date(company.contractStartDate);
+        const now = new Date();
+        
+        const monthsDiff = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+        
+        const cumulativeUsed = company.settings.cumulativePoints || (company.settings.usage.points * monthsDiff);
+        const cumulativeTotal = company.settings.totalPoints || (company.settings.limits.points * monthsDiff);
+        
+        return { cumulative: cumulativeUsed, total: cumulativeTotal };
+      };
+      
+      const { cumulative: totalCumulativePoints, total: totalCumulativeLimit } = calculateCumulativePointsCSV(primaryCompany);
+      const cumulativePointUsage = getUsagePercentage(totalCumulativePoints, totalCumulativeLimit);
       
       const clientSiteUsage = getUsagePercentage(totalSites, totalSiteLimit);
-      const clientPointUsage = getUsagePercentage(totalPoints, totalPointLimit);
       
-      // 契約期間の表示
-      const contractPeriod = `${formatContractDate(primaryCompany.contractStartDate)} - ${formatContractDate(primaryCompany.contractEndDate)}`;
+      // 追加ポイント数の計算
+      const getBasicPoints = (subscriptionType: string): number => {
+        switch (subscriptionType) {
+          case 'free': return 500;
+          case 'basic': return 1000;
+          case 'premium': return 2000;
+          case 'enterprise': return 5000;
+          default: return 1000;
+        }
+      };
+      
+      const basicPoints = getBasicPoints(primaryCompany.settings.subscriptionType);
+      const additionalPoints = Math.max(0, primaryCompany.settings.limits.points - basicPoints);
+      
+      // 分析機能の表示（個別）
+      const analyticsEnabled = primaryCompany.analyticsEnabled ?? true;
+      const heatmapEnabled = primaryCompany.heatmapEnabled ?? false;
+      
+      // 最終ログイン日の計算（全ユーザーの中で最新）
+      const latestLoginDate = client.companies
+        .flatMap(company => company.users)
+        .map(user => user.lastLoginDate)
+        .filter(date => date)
+        .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0];
       
       // 主要ユーザー（最初のユーザー）の情報
       const primaryUser = primaryCompany.users[0];
@@ -844,15 +881,17 @@ export const ClientManagement: React.FC = () => {
         client.name,
         contractStatus.text,
         primaryCompany.settings.subscriptionType,
+        additionalPoints.toString(),
         `${clientSiteUsage}%`,
-        `${clientPointUsage}%`,
-        contractPeriod,
+        `${cumulativePointUsage}%`,
+        formatContractDate(primaryCompany.contractStartDate) || '-',
+        primaryCompany.contractEndDate ? formatContractDate(primaryCompany.contractEndDate) : '無期限',
+        analyticsEnabled ? '有効' : '無効',
+        heatmapEnabled ? '有効' : '無効',
+        latestLoginDate ? formatDateTime(latestLoginDate) : '-',
         primaryUser.name,
         primaryUser.email,
-        getRoleLabel(primaryUser.role),
-        formatDateTime(primaryUser.lastLoginDate),
-        formatDateTime(primaryUser.createdDate),
-        formatDateTime(primaryUser.lastUpdatedDate)
+        getRoleLabel(primaryUser.role)
       ]);
     });
 
@@ -1204,9 +1243,9 @@ export const ClientManagement: React.FC = () => {
 
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
           <table className="w-full min-w-[1800px] divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 クライアント名

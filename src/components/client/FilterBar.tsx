@@ -2,10 +2,19 @@ import React from 'react';
 import { X, Filter } from 'lucide-react';
 
 export interface FilterState {
-  clientTypes: string[];
-  companyStatuses: string[];
+  contractStatuses: string[];
   subscriptionPlans: string[];
-  proxyLogin: 'any' | 'enabled' | 'disabled';
+  analyticsFeatures: string[];
+  contractDateRange: {
+    startFrom: string | null;
+    startTo: string | null;
+    endFrom: string | null;
+    endTo: string | null;
+  };
+  loginDateRange: {
+    from: string | null;
+    to: string | null;
+  };
   usageLimits: {
     sites: { min: number | null; max: number | null };
     points: { min: number | null; max: number | null };
@@ -18,13 +27,9 @@ interface FilterBarProps {
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange }) => {
-  const clientTypeOptions = [
-    { value: 'direct', label: 'ダイレクト' }
-  ];
-
-  const companyStatusOptions = [
-    { value: 'active', label: 'アクティブ' },
-    { value: 'inactive', label: '非アクティブ' },
+  const contractStatusOptions = [
+    { value: 'active', label: '契約中' },
+    { value: 'inactive', label: '契約終了' },
     { value: 'suspended', label: '停止中' }
   ];
 
@@ -35,8 +40,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
     { value: 'enterprise', label: 'Enterprise' }
   ];
 
+  const analyticsOptions = [
+    { value: 'analytics', label: '分析機能' },
+    { value: 'heatmap', label: 'ヒートマップ' },
+    { value: 'none', label: '無効' }
+  ];
 
-  const handleCheckboxChange = (category: 'clientTypes' | 'companyStatuses' | 'subscriptionPlans', value: string) => {
+  const handleCheckboxChange = (category: 'contractStatuses' | 'subscriptionPlans' | 'analyticsFeatures', value: string) => {
     const currentValues = filters[category];
     const newValues = currentValues.includes(value)
       ? currentValues.filter(v => v !== value)
@@ -48,11 +58,30 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
     });
   };
 
-  const handleProxyLoginChange = (value: 'any' | 'enabled' | 'disabled') => {
-    onFilterChange({
-      ...filters,
-      proxyLogin: value
-    });
+  const handleDateRangeChange = (
+    category: 'contractDateRange' | 'loginDateRange',
+    field: string,
+    value: string
+  ) => {
+    const dateValue = value === '' ? null : value;
+    
+    if (category === 'contractDateRange') {
+      onFilterChange({
+        ...filters,
+        contractDateRange: {
+          ...filters.contractDateRange,
+          [field]: dateValue
+        }
+      });
+    } else {
+      onFilterChange({
+        ...filters,
+        loginDateRange: {
+          ...filters.loginDateRange,
+          [field]: dateValue
+        }
+      });
+    }
   };
 
   const handleUsageLimitChange = (
@@ -76,10 +105,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
 
   const clearFilters = () => {
     onFilterChange({
-      clientTypes: [],
-      companyStatuses: [],
+      contractStatuses: [],
       subscriptionPlans: [],
-      proxyLogin: 'any',
+      analyticsFeatures: [],
+      contractDateRange: {
+        startFrom: null,
+        startTo: null,
+        endFrom: null,
+        endTo: null
+      },
+      loginDateRange: {
+        from: null,
+        to: null
+      },
       usageLimits: {
         sites: { min: null, max: null },
         points: { min: null, max: null }
@@ -88,43 +126,49 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
   };
 
   const hasActiveFilters = 
-    filters.clientTypes.length > 0 ||
-    filters.companyStatuses.length > 0 ||
+    filters.contractStatuses.length > 0 ||
     filters.subscriptionPlans.length > 0 ||
-    filters.proxyLogin !== 'any' ||
+    filters.analyticsFeatures.length > 0 ||
+    filters.contractDateRange.startFrom !== null ||
+    filters.contractDateRange.startTo !== null ||
+    filters.contractDateRange.endFrom !== null ||
+    filters.contractDateRange.endTo !== null ||
+    filters.loginDateRange.from !== null ||
+    filters.loginDateRange.to !== null ||
     filters.usageLimits.sites.min !== null ||
     filters.usageLimits.sites.max !== null ||
     filters.usageLimits.points.min !== null ||
     filters.usageLimits.points.max !== null;
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <h3 className="font-bold text-gray-900">フィルター</h3>
+          <Filter className="w-5 h-5 text-blue-600" />
+          <h3 className="text-lg font-bold text-gray-900">フィルター設定</h3>
         </div>
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="flex items-center space-x-1 px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
-            <span>条件クリア</span>
+            <span>すべてクリア</span>
           </button>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-4">
-        <div className="min-w-[160px]">
-          <label className="block text-xs font-medium text-gray-700 mb-2">クライアント種別</label>
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+        {/* 契約ステータス */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">契約ステータス</label>
           <div className="space-y-1">
-            {clientTypeOptions.map(option => (
+            {contractStatusOptions.map(option => (
               <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={filters.clientTypes.includes(option.value)}
-                  onChange={() => handleCheckboxChange('clientTypes', option.value)}
+                  checked={filters.contractStatuses.includes(option.value)}
+                  onChange={() => handleCheckboxChange('contractStatuses', option.value)}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700">{option.label}</span>
@@ -133,25 +177,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
           </div>
         </div>
 
-        <div className="min-w-[160px]">
-          <label className="block text-xs font-medium text-gray-700 mb-2">会社ステータス</label>
-          <div className="space-y-1">
-            {companyStatusOptions.map(option => (
-              <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.companyStatuses.includes(option.value)}
-                  onChange={() => handleCheckboxChange('companyStatuses', option.value)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700">{option.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="min-w-[160px]">
-          <label className="block text-xs font-medium text-gray-700 mb-2">サブスクプラン</label>
+        {/* サブスクプラン */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">サブスクプラン</label>
           <div className="space-y-1">
             {subscriptionPlanOptions.map(option => (
               <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
@@ -167,45 +195,117 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
           </div>
         </div>
 
-        <div className="min-w-[160px]">
-          <label className="block text-xs font-medium text-gray-700 mb-2">代理ログイン可否</label>
-          <select
-            value={filters.proxyLogin}
-            onChange={(e) => handleProxyLoginChange(e.target.value as 'any' | 'enabled' | 'disabled')}
-            className="w-full px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="any">すべて</option>
-            <option value="enabled">有効</option>
-            <option value="disabled">無効</option>
-          </select>
+        {/* 分析機能 */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">分析機能</label>
+          <div className="space-y-1">
+            {analyticsOptions.map(option => (
+              <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.analyticsFeatures.includes(option.value)}
+                  onChange={() => handleCheckboxChange('analyticsFeatures', option.value)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">{option.label}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
-        <div className="min-w-[200px]">
-          <label className="block text-xs font-medium text-gray-700 mb-2">使用率しきい値（%）</label>
+        {/* 日付フィルター */}
+        <div className="bg-gray-50 p-4 rounded-lg col-span-1 lg:col-span-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">日付範囲</label>
+          <div className="space-y-4">
+            {/* 契約開始日 */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">契約開始日</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="date"
+                  value={filters.contractDateRange.startFrom || ''}
+                  onChange={(e) => handleDateRangeChange('contractDateRange', 'startFrom', e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-sm text-gray-500">〜</span>
+                <input
+                  type="date"
+                  value={filters.contractDateRange.startTo || ''}
+                  onChange={(e) => handleDateRangeChange('contractDateRange', 'startTo', e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+            {/* 契約終了日 */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">契約終了日</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="date"
+                  value={filters.contractDateRange.endFrom || ''}
+                  onChange={(e) => handleDateRangeChange('contractDateRange', 'endFrom', e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-sm text-gray-500">〜</span>
+                <input
+                  type="date"
+                  value={filters.contractDateRange.endTo || ''}
+                  onChange={(e) => handleDateRangeChange('contractDateRange', 'endTo', e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+            {/* 最終ログイン日 */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">最終ログイン日</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="date"
+                  value={filters.loginDateRange.from || ''}
+                  onChange={(e) => handleDateRangeChange('loginDateRange', 'from', e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-sm text-gray-500">〜</span>
+                <input
+                  type="date"
+                  value={filters.loginDateRange.to || ''}
+                  onChange={(e) => handleDateRangeChange('loginDateRange', 'to', e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 使用率しきい値 */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">使用率しきい値（%）</label>
           <div className="space-y-2">
             {(['sites', 'points'] as const).map(metric => (
               <div key={metric} className="flex items-center space-x-2">
-                <span className="text-xs text-gray-600 w-12">
+                <span className="text-xs font-medium text-gray-600 w-16">
                   {metric === 'sites' ? 'サイト' : 'ポイント'}
                 </span>
                 <input
                   type="number"
                   min="0"
                   max="100"
-                  placeholder="Min"
+                  placeholder="最小"
                   value={filters.usageLimits[metric].min ?? ''}
                   onChange={(e) => handleUsageLimitChange(metric, 'min', e.target.value)}
-                  className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  className="w-20 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <span className="text-xs text-gray-500">-</span>
+                <span className="text-sm text-gray-500">〜</span>
                 <input
                   type="number"
                   min="0"
                   max="100"
-                  placeholder="Max"
+                  placeholder="最大"
                   value={filters.usageLimits[metric].max ?? ''}
                   onChange={(e) => handleUsageLimitChange(metric, 'max', e.target.value)}
-                  className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  className="w-20 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             ))}

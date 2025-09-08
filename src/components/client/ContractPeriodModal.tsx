@@ -5,12 +5,14 @@ import { DatePicker } from './DatePicker';
 interface ContractPeriod {
   startDate: string | null;
   endDate: string | null;
+  status?: 'active' | 'inactive' | 'suspended';
 }
 
 interface ContractPeriodModalProps {
   companyId: string;
   companyName: string;
   currentPeriod: ContractPeriod;
+  currentStatus?: 'active' | 'inactive' | 'suspended';
   onClose: () => void;
   onSave: (period: ContractPeriod) => void;
 }
@@ -19,11 +21,13 @@ export const ContractPeriodModal: React.FC<ContractPeriodModalProps> = ({
   companyId,
   companyName,
   currentPeriod,
+  currentStatus = 'active',
   onClose,
   onSave
 }) => {
   const [startDate, setStartDate] = useState<string | null>(currentPeriod.startDate);
   const [endDate, setEndDate] = useState<string | null>(currentPeriod.endDate);
+  const [status, setStatus] = useState<'active' | 'inactive' | 'suspended'>(currentPeriod.status || currentStatus);
   const [error, setError] = useState<string>('');
 
   const handleSave = () => {
@@ -37,7 +41,8 @@ export const ContractPeriodModal: React.FC<ContractPeriodModalProps> = ({
 
     onSave({
       startDate,
-      endDate
+      endDate,
+      status
     });
   };
 
@@ -50,32 +55,25 @@ export const ContractPeriodModal: React.FC<ContractPeriodModalProps> = ({
     return `${year}年${month}月${day}日`;
   };
 
-  const getContractStatus = (): { text: string; color: string } => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    if (!startDate && !endDate) {
-      return { text: '未設定', color: 'text-gray-500' };
+  const getContractStatus = (): { text: string; color: string; bgColor: string } => {
+    // 手動設定されたステータスを優先
+    switch (status) {
+      case 'active':
+        return { text: '契約中', color: 'text-green-600', bgColor: 'bg-green-100' };
+      case 'inactive':
+        return { text: '契約終了', color: 'text-red-600', bgColor: 'bg-red-100' };
+      case 'suspended':
+        return { text: '停止中', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+      default:
+        return { text: '未設定', color: 'text-gray-500', bgColor: 'bg-gray-100' };
     }
-    
-    if (startDate && !endDate) {
-      if (today < startDate) {
-        return { text: '契約開始前', color: 'text-yellow-600' };
-      }
-      return { text: '契約中（無期限）', color: 'text-green-600' };
-    }
-    
-    if (startDate && endDate) {
-      if (today < startDate) {
-        return { text: '契約開始前', color: 'text-yellow-600' };
-      }
-      if (today > endDate) {
-        return { text: '契約終了', color: 'text-red-600' };
-      }
-      return { text: '契約中', color: 'text-green-600' };
-    }
-    
-    return { text: '不明', color: 'text-gray-500' };
   };
+  
+  const getStatusOptions = () => [
+    { value: 'active', label: '契約中', color: 'text-green-600', bgColor: 'bg-green-100' },
+    { value: 'inactive', label: '契約終了', color: 'text-red-600', bgColor: 'bg-red-100' },
+    { value: 'suspended', label: '停止中', color: 'text-yellow-600', bgColor: 'bg-yellow-100' }
+  ];
 
   const contractStatus = getContractStatus();
 
@@ -102,15 +100,32 @@ export const ContractPeriodModal: React.FC<ContractPeriodModalProps> = ({
           <div className="p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">現在のステータス</span>
-              <span className={`px-3 py-1 rounded-full text-sm font-bold ${contractStatus.color} ${
-                contractStatus.text === '契約中' ? 'bg-green-100' :
-                contractStatus.text === '契約中（無期限）' ? 'bg-green-100' :
-                contractStatus.text === '契約開始前' ? 'bg-yellow-100' :
-                contractStatus.text === '契約終了' ? 'bg-red-100' :
-                'bg-gray-100'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-sm font-bold ${contractStatus.color} ${contractStatus.bgColor}`}>
                 {contractStatus.text}
               </span>
+            </div>
+          </div>
+          
+          {/* ステータス選択 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              契約ステータス <span className="text-red-500">*</span>
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {getStatusOptions().map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setStatus(option.value as 'active' | 'inactive' | 'suspended')}
+                  className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    status === option.value
+                      ? `border-blue-500 ${option.bgColor} ${option.color}`
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
 

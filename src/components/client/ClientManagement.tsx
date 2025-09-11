@@ -803,8 +803,6 @@ export const ClientManagement: React.FC = () => {
       'ステータス',
       'プラン',
       '追加ポイント数',
-      'サイト使用率',
-      'ポイント使用率（累積）',
       '契約開始日',
       '契約終了日',
       '分析機能（通常）',
@@ -1257,12 +1255,6 @@ export const ClientManagement: React.FC = () => {
                 プラン
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                サイト使用率
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ポイント使用率（累積）
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 契約開始日
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1301,26 +1293,6 @@ export const ClientManagement: React.FC = () => {
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
                     {client.primarySubscriptionType}
                   </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <span className="text-sm font-medium text-gray-900">
-                      {client.totalSites}/{client.totalSitesLimit}
-                    </span>
-                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${getUsageColor(getUsagePercentage(client.totalSites, client.totalSitesLimit))}`}>
-                      {getUsagePercentage(client.totalSites, client.totalSitesLimit)}%
-                    </span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <span className="text-sm font-medium text-gray-900">
-                      {client.totalCumulativePoints.toLocaleString()}/{client.totalCumulativeLimit.toLocaleString()}
-                    </span>
-                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${getUsageColor(getUsagePercentage(client.totalCumulativePoints, client.totalCumulativeLimit))}`}>
-                      {getUsagePercentage(client.totalCumulativePoints, client.totalCumulativeLimit)}%
-                    </span>
-                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                   {client.contractStartDate ? formatContractDate(client.contractStartDate) : '-'}
@@ -1650,7 +1622,8 @@ export const ClientManagement: React.FC = () => {
                           points: planData.additionalMonthlyPoints + 
                             (planData.subscriptionType === 'free' ? 500 :
                              planData.subscriptionType === 'basic' ? 1000 :
-                             planData.subscriptionType === 'premium' ? 2000 : 5000)
+                             planData.subscriptionType === 'premium' ? 2000 : 5000),
+                          heatmaps: planData.heatmapsLimit || 0
                         }
                       },
                       analyticsEnabled: planData.analyticsEnabled,

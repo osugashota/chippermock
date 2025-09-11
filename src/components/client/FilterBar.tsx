@@ -15,10 +15,6 @@ export interface FilterState {
     from: string | null;
     to: string | null;
   };
-  usageLimits: {
-    sites: { min: number | null; max: number | null };
-    points: { min: number | null; max: number | null };
-  };
 }
 
 interface FilterBarProps {
@@ -84,25 +80,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
     }
   };
 
-  const handleUsageLimitChange = (
-    metric: 'sites' | 'points' | 'users',
-    type: 'min' | 'max',
-    value: string
-  ) => {
-    const numValue = value === '' ? null : Number(value);
-    
-    onFilterChange({
-      ...filters,
-      usageLimits: {
-        ...filters.usageLimits,
-        [metric]: {
-          ...filters.usageLimits[metric],
-          [type]: numValue
-        }
-      }
-    });
-  };
-
   const clearFilters = () => {
     onFilterChange({
       contractStatuses: [],
@@ -117,10 +94,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
       loginDateRange: {
         from: null,
         to: null
-      },
-      usageLimits: {
-        sites: { min: null, max: null },
-        points: { min: null, max: null }
       }
     });
   };
@@ -134,11 +107,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
     filters.contractDateRange.endFrom !== null ||
     filters.contractDateRange.endTo !== null ||
     filters.loginDateRange.from !== null ||
-    filters.loginDateRange.to !== null ||
-    filters.usageLimits.sites.min !== null ||
-    filters.usageLimits.sites.max !== null ||
-    filters.usageLimits.points.min !== null ||
-    filters.usageLimits.points.max !== null;
+    filters.loginDateRange.to !== null;
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -276,39 +245,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange })
                 />
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* 使用率しきい値 */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <label className="block text-sm font-semibold text-gray-700 mb-3">使用率しきい値（%）</label>
-          <div className="space-y-2">
-            {(['sites', 'points'] as const).map(metric => (
-              <div key={metric} className="flex items-center space-x-2">
-                <span className="text-xs font-medium text-gray-600 w-16">
-                  {metric === 'sites' ? 'サイト' : 'ポイント'}
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="最小"
-                  value={filters.usageLimits[metric].min ?? ''}
-                  onChange={(e) => handleUsageLimitChange(metric, 'min', e.target.value)}
-                  className="w-20 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <span className="text-sm text-gray-500">〜</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="最大"
-                  value={filters.usageLimits[metric].max ?? ''}
-                  onChange={(e) => handleUsageLimitChange(metric, 'max', e.target.value)}
-                  className="w-20 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            ))}
           </div>
         </div>
       </div>

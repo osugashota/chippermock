@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Company } from '../../types/client';
-import { X, Building2, Zap, Shield, Users, Globe } from 'lucide-react';
+import { X, Building2, Zap, Shield, Users, Globe, Activity } from 'lucide-react';
 
 interface CompanySettingsModalProps {
   company: Company;
@@ -64,11 +64,12 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ comp
             <h3 className="text-sm font-medium text-blue-900 mb-3">現在の利用状況</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               {Object.entries(settings.limits).filter(([key]) => key !== 'domains').map(([key, limit]) => {
-                const used = settings.usage[key as keyof typeof settings.usage];
-                const percentage = getUsagePercentage(used, limit);
+                const used = settings.usage[key as keyof typeof settings.usage] || 0;
+                const percentage = getUsagePercentage(used, limit as number);
                 const label = key === 'sites' ? 'サイト' : 
                              key === 'points' ? 'ポイント' :
-                             'ユーザー';
+                             key === 'users' ? 'ユーザー' :
+                             key === 'heatmaps' ? 'ヒートマップ' : key;
                 
                 return (
                   <div key={key} className="text-center">
@@ -157,6 +158,24 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ comp
                 required
               />
               <p className="text-xs text-gray-500 mt-1">現在の使用量: {settings.usage.users}ユーザー</p>
+            </div>
+
+            {/* ヒートマップ利用可能数 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Activity className="inline w-4 h-4 mr-1" />
+                ヒートマップ利用可能数
+              </label>
+              <input
+                type="number"
+                value={settings.limits.heatmaps || 0}
+                onChange={(e) => handleLimitChange('heatmaps', parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                min={settings.usage.heatmaps || 0}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">現在の使用量: {settings.usage.heatmaps || 0}個</p>
+              <p className="text-xs text-gray-400 mt-1">ヒートマップ分析を利用できる数を設定します</p>
             </div>
           </div>
 

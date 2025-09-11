@@ -11,6 +11,7 @@ interface ContractPlanModalProps {
     additionalMonthlyPoints: number;
     analyticsEnabled: boolean;
     heatmapEnabled: boolean;
+    heatmapsLimit?: number;
   }) => void;
 }
 
@@ -34,7 +35,8 @@ export const ContractPlanModal: React.FC<ContractPlanModalProps> = ({
     subscriptionType: company.settings.subscriptionType,
     additionalMonthlyPoints: Math.max(0, company.settings.limits.points - getBasicPoints(company.settings.subscriptionType)), // 現在のポイント制限から基本ポイントを引いた値として計算
     analyticsEnabled: (company as any).analyticsEnabled ?? true, // 既存の設定を使用、なければデフォルトで有効
-    heatmapEnabled: (company as any).heatmapEnabled ?? false // 既存の設定を使用、なければデフォルトで無効
+    heatmapEnabled: (company as any).heatmapEnabled ?? false, // 既存の設定を使用、なければデフォルトで無効
+    heatmapsLimit: company.settings.limits.heatmaps || 0
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -187,6 +189,25 @@ export const ContractPlanModal: React.FC<ContractPlanModalProps> = ({
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
                 </label>
               </div>
+
+              {/* ヒートマップ利用可能数 */}
+              {formData.heatmapEnabled && (
+                <div className="ml-8 p-4 bg-white rounded-lg border border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Eye className="w-4 h-4 inline mr-1 text-red-600" />
+                    ヒートマップ利用可能数
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.heatmapsLimit}
+                    onChange={(e) => handleInputChange('heatmapsLimit', parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="10"
+                    min="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">ヒートマップを利用できる数を設定します</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -205,10 +226,6 @@ export const ContractPlanModal: React.FC<ContractPlanModalProps> = ({
               <div>
                 <span className="text-gray-600">プラン: </span>
                 <span className="font-medium capitalize">{company.settings.subscriptionType}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">ユーザー数: </span>
-                <span className="font-medium">{company.settings.usage.users}/{company.settings.limits.users}</span>
               </div>
             </div>
           </div>

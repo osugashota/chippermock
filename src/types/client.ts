@@ -39,11 +39,13 @@ export interface Company {
       sites: number;
       points: number;
       users: number;
+      heatmaps?: number; // ヒートマップ利用可能数
     };
     usage: {
       sites: number;
       points: number;
       users: number;
+      heatmaps?: number; // ヒートマップ使用数
     };
   };
   

@@ -25,8 +25,6 @@ export const SortBar: React.FC<SortBarProps> = ({
     { value: 'clientName', label: 'クライアント' },
     { value: 'status', label: 'ステータス' },
     { value: 'subscription', label: 'プラン' },
-    { value: 'usageSitesPct', label: 'サイト使用率' },
-    { value: 'usagePointsPct', label: 'ポイント使用率' },
     { value: 'proxyLogin', label: '代理ログイン' },
     { value: 'lastLoginDate', label: '最終ログイン日時' },
     { value: 'createdDate', label: '作成日' },

@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ProductData, TargetData, PersonData, ProductSummary } from './types';
+import { Keyword } from './types/keyword';
 import { ProductForm } from './components/ProductForm';
 import { TargetList } from './components/TargetList';
 import { TargetEditForm } from './components/TargetEditForm';
 import { AuthorList } from './components/AuthorList';
 import { AuthorEditForm } from './components/AuthorEditForm';
 import { ProductList } from './components/ProductList';
-import { Package, Users, User, Database } from 'lucide-react';
+import { KeywordList } from './components/KeywordList';
+import { KeywordEditForm } from './components/KeywordEditForm';
+import { KeywordGenerateModal } from './components/KeywordGenerateModal';
+import { ArticleGenerationModal } from './components/ArticleGenerationModal';
+import { CreativeDriveSidebar } from './components/CreativeDriveSidebar';
+import { Package, Users, User, Search, Sparkles } from 'lucide-react';
+import { generateKeywords } from './utils/keywordGenerator';
+import { parseCSV } from './utils/csvUtils';
+import { Article } from './utils/articleGenerator';
 
-type MainView = 'products' | 'targets' | 'authors' | 'settings';
+type MainView = 'products' | 'targets' | 'authors' | 'keywords';
 type SubView = 'list' | 'edit';
 
 function App() {
@@ -16,10 +25,16 @@ function App() {
   const [productView, setProductView] = useState<SubView>('list');
   const [targetView, setTargetView] = useState<SubView>('list');
   const [authorView, setAuthorView] = useState<SubView>('list');
-  
+  const [keywordView, setKeywordView] = useState<SubView>('list');
+
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [editingAuthorId, setEditingAuthorId] = useState<string | null>(null);
+  const [editingKeyword, setEditingKeyword] = useState<Keyword | null>(null);
+
+  const [showKeywordGenerateModal, setShowKeywordGenerateModal] = useState(false);
+  const [articleGenerationMode, setArticleGenerationMode] = useState<'single' | 'bulk' | null>(null);
+  const [selectedKeywordsForArticle, setSelectedKeywordsForArticle] = useState<Keyword[]>([]);
   
   // サンプルデータ
   const [products, setProducts] = useState<ProductSummary[]>([
@@ -100,6 +115,9 @@ function App() {
       readerRelationship: 'メンター'
     }
   ]);
+
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
 
   const [currentProduct, setCurrentProduct] = useState<ProductData>({
     id: '',
@@ -319,52 +337,210 @@ function App() {
     setEditingAuthorId(null);
   };
 
+  // キーワード管理
+  const handleCreateNewKeyword = () => {
+    const newKeyword: Keyword = {
+      id: Date.now().toString(),
+      parentKeyword: '',
+      childKeyword: '',
+      keywordType: '関心KW',
+      target: '',
+      searchIntent: '',
+      articleType: 'お役立ち情報',
+      h2Structure: [],
+      currentRank: undefined,
+      cvContribution: undefined,
+      isArticleCreated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setEditingKeyword(newKeyword);
+    setKeywordView('edit');
+  };
+
+  const handleEditKeyword = (keyword: Keyword) => {
+    setEditingKeyword(keyword);
+    setKeywordView('edit');
+  };
+
+  const handleDeleteKeyword = (keywordId: string) => {
+    if (confirm('このキーワードを削除してもよろしいですか？')) {
+      setKeywords(prev => prev.filter(k => k.id !== keywordId));
+    }
+  };
+
+  const handleDuplicateKeyword = (keyword: Keyword) => {
+    const duplicated: Keyword = {
+      ...keyword,
+      id: Date.now().toString(),
+      childKeyword: keyword.childKeyword + ' (コピー)',
+      isArticleCreated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setKeywords(prev => [...prev, duplicated]);
+  };
+
+  const handleKeywordSave = () => {
+    if (editingKeyword) {
+      const existingIndex = keywords.findIndex(k => k.id === editingKeyword.id);
+      if (existingIndex >= 0) {
+        setKeywords(prev => {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...editingKeyword,
+            updatedAt: new Date().toISOString()
+          };
+          return updated;
+        });
+      } else {
+        setKeywords(prev => [...prev, editingKeyword]);
+      }
+    }
+    setKeywordView('list');
+    setEditingKeyword(null);
+  };
+
+  const handleKeywordCancel = () => {
+    setKeywordView('list');
+    setEditingKeyword(null);
+  };
+
+  const handleGenerateKeywords = (productId: string, targetId: string) => {
+    const product = products.find(p => p.id === productId);
+    const target = targets.find(t => t.id === targetId);
+
+    if (product && target) {
+      const productData: ProductData = {
+        id: product.id,
+        serviceName: product.serviceName,
+        serviceOverview: product.serviceOverview,
+        excludeUrls: [''],
+        usp: '',
+        problemToSolve: '',
+        userPainPoints: '',
+        differentiationPoints: '',
+        advantagePoints: '',
+        commoditizationPoints: '',
+        dropoutPoints: '',
+        competitorInfo: [''],
+        pricing: '',
+        solutionOffered: '',
+        caseStudies: [''],
+        implementationEffects: '',
+        beforeSituation: '',
+        afterSituation: '',
+        mainIndustries: [''],
+        solutionFeatures: '',
+        implementationBarriers: '',
+        faq: []
+      };
+
+      const generatedKeywords = generateKeywords(productData, target);
+      setKeywords(prev => [...prev, ...generatedKeywords]);
+      setShowKeywordGenerateModal(false);
+      alert(`${generatedKeywords.length}件のキーワードを生成しました`);
+    }
+  };
+
+  const handleGenerateArticle = (keywordId: string) => {
+    const keyword = keywords.find(k => k.id === keywordId);
+    if (keyword) {
+      setSelectedKeywordsForArticle([keyword]);
+      setArticleGenerationMode('single');
+    }
+  };
+
+  const handleBulkGenerateArticles = (keywordIds: string[]) => {
+    const selectedKeywords = keywords.filter(k => keywordIds.includes(k.id));
+    setSelectedKeywordsForArticle(selectedKeywords);
+    setArticleGenerationMode('bulk');
+  };
+
+  const handleArticleGenerationComplete = (generatedArticles: Article[]) => {
+    setArticles(prev => [...prev, ...generatedArticles]);
+
+    // キーワードの記事作成状態を更新
+    const articleKeywordIds = generatedArticles.map(a => a.keywordId);
+    setKeywords(prev => prev.map(k =>
+      articleKeywordIds.includes(k.id)
+        ? { ...k, isArticleCreated: true, updatedAt: new Date().toISOString() }
+        : k
+    ));
+
+    alert(`${generatedArticles.length}件の記事を生成しました`);
+    setArticleGenerationMode(null);
+    setSelectedKeywordsForArticle([]);
+  };
+
+  const handleImportCSV = async (file: File) => {
+    try {
+      const text = await file.text();
+      const importedKeywords = parseCSV(text);
+      setKeywords(prev => [...prev, ...importedKeywords]);
+      alert(`${importedKeywords.length}件のキーワードをインポートしました`);
+    } catch (error) {
+      console.error('CSV import failed:', error);
+      alert('CSVのインポートに失敗しました');
+    }
+  };
+
   // メインナビゲーション
   const mainNavItems = [
     { id: 'products', label: '商材管理', icon: Package, count: products.length },
     { id: 'targets', label: 'ターゲット管理', icon: Users, count: targets.length },
-    { id: 'authors', label: '著者管理', icon: User, count: authors.length }
+    { id: 'authors', label: '著者管理', icon: User, count: authors.length },
   ] as const;
 
   return (
-    <div className="space-y-6">
-      {/* ヘッダー */}
+    <div className="flex h-screen bg-gray-50">
+      {/* Creative Driveサイドバー */}
+      <CreativeDriveSidebar
+        keywords={keywords}
+        onKeywordSelect={(keyword) => {
+          setEditingKeyword(keyword);
+          setMainView('keywords');
+          setKeywordView('edit');
+        }}
+        onCreateKeyword={handleCreateNewKeyword}
+        onShowGenerateModal={() => setShowKeywordGenerateModal(true)}
+      />
+
+      {/* メインコンテンツ */}
+      <div className="flex-1 overflow-auto">
         {/* メインナビゲーション */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="flex">
-              {mainNavItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setMainView(item.id)}
-                    className={`flex items-center gap-3 px-6 py-4 text-sm font-medium transition-colors relative ${
+        <div className="bg-white border-b border-gray-200">
+          <nav className="flex">
+            {mainNavItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setMainView(item.id)}
+                  className={`flex items-center gap-3 px-6 py-4 text-sm font-medium transition-colors relative ${
+                    mainView === item.id
+                      ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon size={20} />
+                  <span>{item.label}</span>
+                  {item.count > 0 && (
+                    <span className={`inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full ${
                       mainView === item.id
-                        ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon size={20} />
-                    <span>{item.label}</span>
-                    {item.count > 0 && item.id !== 'settings' && (
-                      <span className={`inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full ${
-                        mainView === item.id
-                          ? 'bg-blue-100 text-blue-600'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {item.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* メインコンテンツ */}
-        <div className="transition-all duration-300">
+        <div className="p-6">
           {/* 商材管理 */}
           {mainView === 'products' && (
             <>
@@ -435,7 +611,68 @@ function App() {
               )}
             </>
           )}
+
+            {/* キーワード管理 */}
+            {mainView === 'keywords' && (
+              <>
+                {keywordView === 'list' ? (
+                  <>
+                    <div className="mb-4 flex justify-end">
+                      <button
+                        onClick={() => setShowKeywordGenerateModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                      >
+                        <Sparkles size={16} />
+                        AIでキーワード生成
+                      </button>
+                    </div>
+                    <KeywordList
+                      keywords={keywords}
+                      onCreateNew={handleCreateNewKeyword}
+                      onEdit={handleEditKeyword}
+                      onDelete={handleDeleteKeyword}
+                      onDuplicate={handleDuplicateKeyword}
+                      onGenerateArticle={handleGenerateArticle}
+                      onBulkGenerateArticles={handleBulkGenerateArticles}
+                      onImportCSV={handleImportCSV}
+                    />
+                  </>
+                ) : (
+                  <KeywordEditForm
+                    keyword={editingKeyword!}
+                    onChange={setEditingKeyword}
+                    onSave={handleKeywordSave}
+                    onCancel={handleKeywordCancel}
+                    isNew={!keywords.find(k => k.id === editingKeyword?.id)}
+                  />
+                )}
+              </>
+            )}
         </div>
+      </div>
+
+      {/* モーダル */}
+      {showKeywordGenerateModal && (
+        <KeywordGenerateModal
+          products={products}
+          targets={targets}
+          onGenerate={handleGenerateKeywords}
+          onClose={() => setShowKeywordGenerateModal(false)}
+        />
+      )}
+
+      {articleGenerationMode && (
+        <ArticleGenerationModal
+          keywords={selectedKeywordsForArticle}
+          authors={authors}
+          mode={articleGenerationMode}
+          onClose={() => {
+            setArticleGenerationMode(null);
+            setSelectedKeywordsForArticle([]);
+          }}
+          onComplete={handleArticleGenerationComplete}
+        />
+      )}
     </div>
   );
 }

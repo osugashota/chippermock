@@ -5,6 +5,7 @@ import { SettingsLayout } from '../settings/SettingsLayout';
 import { SiteManagement } from '../settings/SiteManagement';
 import { ClientManagement } from '../client/ClientManagement';
 import { ProductManagement } from '../settings/ProductManagement';
+import { KeywordManagement } from '../KeywordManagement';
 import App from '../../App';
 import { SystemArticleGeneration } from '../SystemArticleGeneration';
 import { ErrorBoundary } from '../ErrorBoundary';
@@ -86,6 +87,16 @@ export const MainLayout: React.FC = () => {
 
   const renderContent = () => {
     switch (currentView) {
+      case 'keyword-analysis':
+        return (
+          <div className="p-6 bg-gray-50 min-h-screen">
+            <KeywordManagement
+              products={sampleProducts}
+              targets={sampleTargets}
+              authors={sampleAuthors}
+            />
+          </div>
+        );
       case 'settings':
         return <SettingsLayout onNavigate={setCurrentView} />;
       case 'settings-sites':
@@ -100,7 +111,7 @@ export const MainLayout: React.FC = () => {
         return <ProductManagement />;
       case 'system-prompt':
         return (
-          <SystemArticleGeneration 
+          <SystemArticleGeneration
             products={sampleProducts}
             targets={sampleTargets}
             authors={sampleAuthors}
